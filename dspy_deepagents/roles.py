@@ -69,9 +69,19 @@ class ToolSelectSignature(dspy.Signature):
 
 
 class PlannerAgent(dspy.Module):
-    def __init__(self, predictor: dspy.Module | None = None) -> None:
+    def __init__(
+        self,
+        predictor: dspy.Module | None = None,
+        rlm: RLM | None = None,
+        use_rlm: bool = True,
+    ) -> None:
         super().__init__()
-        self.predictor = predictor or dspy.Predict(PlanSignature)
+        if predictor is not None:
+            self.predictor = predictor
+        elif use_rlm:
+            self.predictor = rlm or RLM(PlanSignature, max_iterations=10)
+        else:
+            self.predictor = dspy.Predict(PlanSignature)
 
     def forward(self, task: str, context: str, memory: str) -> dspy.Prediction:
         return self.predictor(task=task, context=context, memory=memory)
@@ -82,10 +92,15 @@ class ExecutorAgent(dspy.Module):
         self,
         predictor: dspy.Module | None = None,
         rlm: RLM | None = None,
+        use_rlm: bool = True,
     ) -> None:
         super().__init__()
-        self.predictor = predictor
-        self.rlm = rlm or RLM("context, query -> output", max_iterations=10)
+        if predictor is not None:
+            self.predictor = predictor
+        elif use_rlm:
+            self.predictor = rlm or RLM(ExecuteSignature, max_iterations=10)
+        else:
+            self.predictor = dspy.Predict(ExecuteSignature)
 
     def forward(
         self,
@@ -94,24 +109,28 @@ class ExecutorAgent(dspy.Module):
         memory: str,
         tool_result: str = "",
     ) -> dspy.Prediction:
-        if self.predictor is not None:
-            return self.predictor(
-                task=task,
-                context=context,
-                memory=memory,
-                tool_result=tool_result,
-            )
-        combined_context = "\n\n".join(
-            part for part in [context, memory, tool_result] if part
+        return self.predictor(
+            task=task,
+            context=context,
+            memory=memory,
+            tool_result=tool_result,
         )
-        rlm_result = self.rlm(context=combined_context, query=task)
-        return dspy.Prediction(result=rlm_result.output, confidence=0.5)
 
 
 class ReviewerAgent(dspy.Module):
-    def __init__(self, predictor: dspy.Module | None = None) -> None:
+    def __init__(
+        self,
+        predictor: dspy.Module | None = None,
+        rlm: RLM | None = None,
+        use_rlm: bool = True,
+    ) -> None:
         super().__init__()
-        self.predictor = predictor or dspy.Predict(ReviewSignature)
+        if predictor is not None:
+            self.predictor = predictor
+        elif use_rlm:
+            self.predictor = rlm or RLM(ReviewSignature, max_iterations=10)
+        else:
+            self.predictor = dspy.Predict(ReviewSignature)
 
     def forward(
         self, task: str, draft: str, context: str, memory: str
@@ -120,11 +139,47 @@ class ReviewerAgent(dspy.Module):
 
 
 class SynthesizerAgent(dspy.Module):
-    def __init__(self, predictor: dspy.Module | None = None) -> None:
+    def __init__(
+        self,
+        predictor: dspy.Module | None = None,
+        rlm: RLM | None = None,
+        use_rlm: bool = True,
+    ) -> None:
         super().__init__()
-        self.predictor = predictor or dspy.Predict(SynthesizeSignature)
+        if predictor is not None:
+            self.predictor = predictor
+        elif use_rlm:
+            self.predictor = rlm or RLM(SynthesizeSignature, max_iterations=10)
+        else:
+            self.predictor = dspy.Predict(SynthesizeSignature)
 
     def forward(
         self, task: str, child_results: list[str], memory: str
     ) -> dspy.Prediction:
         return self.predictor(task=task, child_results=child_results, memory=memory)
+
+
+class ToolSelectorAgent(dspy.Module):
+    def __init__(
+        self,
+        predictor: dspy.Module | None = None,
+        rlm: RLM | None = None,
+        use_rlm: bool = True,
+    ) -> None:
+        super().__init__()
+        if predictor is not None:
+            self.predictor = predictor
+        elif use_rlm:
+            self.predictor = rlm or RLM(ToolSelectSignature, max_iterations=6)
+        else:
+            self.predictor = dspy.Predict(ToolSelectSignature)
+
+    def forward(
+        self, task: str, context: str, memory: str, tools: str
+    ) -> dspy.Prediction:
+        return self.predictor(
+            task=task,
+            context=context,
+            memory=memory,
+            tools=tools,
+        )

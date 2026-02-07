@@ -41,7 +41,8 @@ Implement the Deep Agents role topology as composable DSPy modules:
 - **ReviewerAgent**: validates outputs and confidence.
 - **SynthesizerAgent**: merges child results.
 
-Each role should be usable stand-alone or via `RecursiveAgent`.
+Each role should be usable stand-alone or via `RecursiveAgent`, and defaults to
+`dspy.RLM` predictors unless you provide a custom predictor.
 
 ### Phase 3 — Memory & Trace
 1. Define a lightweight memory structure (per-node scratch + persistent history).

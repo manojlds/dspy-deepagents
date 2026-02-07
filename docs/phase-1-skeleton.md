@@ -7,7 +7,7 @@ execution, and synthesis while delegating leaf execution to `dspy.predict.rlm.RL
 - `dspy_deepagents.recursive_agent.RecursiveAgent`:
   - Depth/budget controls via `RecursionConfig`.
   - Planner → recursive calls → synthesizer flow.
-  - Leaf execution uses `RLM("context, query -> output", max_iterations=10)`.
+  - Leaf execution uses `RLM(ExecuteSignature, max_iterations=10)` by default.
   - Minimal trace capturing plan/execute/synthesize events.
 
 ## What’s Still Missing
