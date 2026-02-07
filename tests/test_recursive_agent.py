@@ -2,7 +2,12 @@ import dspy
 
 from dspy_deepagents.memory import RecursiveMemory
 from dspy_deepagents.recursive_agent import RecursionConfig, RecursiveAgent
-from dspy_deepagents.roles import ExecutorAgent, PlannerAgent, ReviewerAgent, SynthesizerAgent
+from dspy_deepagents.roles import (
+    ExecutorAgent,
+    PlannerAgent,
+    ReviewerAgent,
+    SynthesizerAgent,
+)
 
 
 class StaticPlanner(PlannerAgent):
