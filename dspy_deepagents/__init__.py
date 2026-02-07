@@ -11,8 +11,8 @@ from dspy_deepagents.roles import (
     ReviewSignature,
     SynthesizerAgent,
     SynthesizeSignature,
-    ToolSelectSignature,
     ToolSelectorAgent,
+    ToolSelectSignature,
 )
 from dspy_deepagents.tools import Tool, ToolRegistry
 
