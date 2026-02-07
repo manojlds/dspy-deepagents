@@ -86,3 +86,4 @@ Each role should be usable stand-alone or via `RecursiveAgent`.
 - `examples/tool_recursive_agent.py`: leaf-only tool routing and trace capture.
 - `examples/review_recursive_agent.py`: reviewer/reflection loop.
 - `examples/eval_harness.py`: simple evaluation harness for multiple tasks.
+- `examples/deep_research_agent.py`: deep research workflow with Wikipedia-backed notes.
