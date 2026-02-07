@@ -1,0 +1,26 @@
+[project]
+name = "dspy-deepagents"
+version = "0.1.0"
+description = "DSPy-native Deep Agents with recursive RLM-backed orchestration."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "dspy-ai>=2.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+    "ty>=0.0.1",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+extend-select = ["B", "UP"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
