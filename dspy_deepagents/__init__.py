@@ -11,6 +11,8 @@ from dspy_deepagents.roles import (
     ReviewSignature,
     SynthesizerAgent,
     SynthesizeSignature,
+    ToolSelectSignature,
+    ToolSelectorAgent,
 )
 from dspy_deepagents.tools import Tool, ToolRegistry
 
@@ -19,6 +21,7 @@ __all__ = [
     "ExecuteSignature",
     "ReviewSignature",
     "SynthesizeSignature",
+    "ToolSelectSignature",
     "RecursionConfig",
     "RecursiveAgent",
     "RecursiveMemory",
@@ -26,6 +29,7 @@ __all__ = [
     "ExecutorAgent",
     "ReviewerAgent",
     "SynthesizerAgent",
+    "ToolSelectorAgent",
     "Tool",
     "ToolRegistry",
 ]
