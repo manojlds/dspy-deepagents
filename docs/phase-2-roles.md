@@ -6,8 +6,8 @@ This phase implements the Deep Agents role topology as composable DSPy modules.
 - `PlannerAgent`, `ExecutorAgent`, `ReviewerAgent`, and `SynthesizerAgent` in
   `dspy_deepagents/roles.py`.
 - Role-specific signatures with explicit I/O fields.
-- `ExecutorAgent` defaults to RLM-backed execution while preserving signature-based
-  execution when a predictor is supplied.
+- All roles default to `dspy.RLM` predictors (with signature-based I/O) while still
+  allowing callers to inject a custom predictor or disable RLM usage.
 
 ## Notes
 - Each role can be instantiated independently or supplied to `RecursiveAgent`.

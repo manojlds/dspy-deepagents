@@ -12,7 +12,7 @@ from dspy_deepagents.roles import (
     PlannerAgent,
     ReviewerAgent,
     SynthesizerAgent,
-    ToolSelectSignature,
+    ToolSelectorAgent,
 )
 from dspy_deepagents.tools import ToolRegistry
 from dspy_deepagents.trace import TraceEvent
@@ -51,7 +51,7 @@ class RecursiveAgent(dspy.Module):
         self.executor = executor or ExecutorAgent()
         self.reviewer = reviewer or ReviewerAgent()
         self.synthesizer = synthesizer or SynthesizerAgent()
-        self.tool_selector = tool_selector or dspy.Predict(ToolSelectSignature)
+        self.tool_selector = tool_selector or ToolSelectorAgent()
         self.tools = tools or ToolRegistry()
         self._node_counter = count(1)
 
