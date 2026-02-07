@@ -11,10 +11,9 @@ execution, and synthesis while delegating leaf execution to `dspy.predict.rlm.RL
   - Minimal trace capturing plan/execute/synthesize events.
 
 ## What’s Still Missing
-- Tool routing (leaf-only tool calls).
-- Explicit memory object and trace schema.
-- Reviewer/reflection loop and confidence calibration.
-- Integration with evaluator harnesses.
+The remaining phases (tooling, memory/trace, reviewer loops, and evaluation harness)
+are implemented in the Phase 2–6 notes and code. See `docs/phase-2-roles.md` through
+`docs/phase-6-evaluation.md` for summaries.
 
 ## Usage Sketch
 ```python
