@@ -31,6 +31,9 @@ See [docs/phase-0-discovery.md](docs/phase-0-discovery.md) for the detailed Phas
    - `SynthesizeSignature` (aggregate child outputs)
 3. Enforce explicit stop criteria (depth cap, budget, confidence threshold).
 
+
+Phase 1 scaffolding lives in [`dspy_deepagents/recursive_agent.py`](dspy_deepagents/recursive_agent.py) with a short status note in [docs/phase-1-skeleton.md](docs/phase-1-skeleton.md).
+
 ### Phase 2 — Agent Roles as DSPy Modules
 Implement the Deep Agents role topology as composable DSPy modules:
 - **PlannerAgent**: creates child tasks.
