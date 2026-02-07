@@ -72,3 +72,17 @@ Each role should be usable stand-alone or via `RecursiveAgent`.
 1. Inspect `dspy.rlm` API and draft the minimal `RecursiveAgent` skeleton.
 2. Stub role modules and signatures.
 3. Create a first evaluation example (manual test) to validate recursion flow.
+
+## Implementation Status
+- Phase 0/1: documented and scaffolded in `docs/phase-0-discovery.md` and `docs/phase-1-skeleton.md`.
+- Phase 2: roles implemented in `dspy_deepagents/roles.py` with summary in `docs/phase-2-roles.md`.
+- Phase 3: memory/trace implemented in `dspy_deepagents/memory.py` and `dspy_deepagents/trace.py`.
+- Phase 4: tool routing implemented in `dspy_deepagents/tools.py` and `RecursiveAgent` leaf execution.
+- Phase 5: reviewer/reflection loop added to `RecursiveAgent` with `ReviewerAgent` and `ReviewSignature`.
+- Phase 6: evaluation harness and examples added under `examples/`.
+
+## Examples
+- `examples/basic_recursive_agent.py`: basic recursion flow with memory + trace output.
+- `examples/tool_recursive_agent.py`: leaf-only tool routing and trace capture.
+- `examples/review_recursive_agent.py`: reviewer/reflection loop.
+- `examples/eval_harness.py`: simple evaluation harness for multiple tasks.
