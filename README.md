@@ -1,90 +1,107 @@
 # dspy-deepagents
 
-## Goal
-Implement Deep Agents (https://github.com/langchain-ai/deepagents) natively in DSPy with **RLM-style recursive sub-agents**, leveraging the existing `dspy.rlm` module for recursion and runtime control.
+DSPy-native Deep Agents with **RLM-backed orchestration** — an equivalent of
+[LangChain Deep Agents](https://github.com/langchain-ai/deepagents) built on
+DSPy's Recursive Language Model (RLM) primitive.
 
-## Key Assumption
-DSPy already provides RLM via `dspy.predict.rlm.RLM`, so recursion orchestration should **wrap or extend** it rather than reimplementing recursion primitives.
+## Core Insight
 
-## Conceptual Mapping
-| Deep Agents Concept | DSPy Native Construct | RLM Alignment |
-|---|---|---|
-| Recursive sub-agents | `dspy.rlm` orchestration + DSPy `Module` hierarchy | Recursive decomposition layers |
-| Agent state + memory | `Prediction` + explicit memory store | Persistent recursive context |
-| Tool use | DSPy `Signature` + tool wrappers | Actions at recursion leaves |
-| Reflection | DSPy `Module` for self-critique | Recursive refinement |
+RLM's REPL-based iteration loop **is** the agent loop.  Instead of building a
+separate orchestration layer and using RLM as a predictor inside it, the agent
+itself is an RLM.  All four Deep Agents pillars map directly to RLM primitives:
 
-## Implementation Plan
+| Deep Agents Pillar | RLM Primitive |
+|--------------------|---------------|
+| Agent loop / decision-making | REPL iteration loop (LLM writes code each step) |
+| System prompt | RLM Signature docstring + action instructions |
+| Planning (todo list) | `write_todos()` / `read_todos()` tool functions |
+| Sub-agent delegation | `delegate()` tool spawning child RLM (fresh sandbox = isolation) |
+| Filesystem workspace | `write_file()` / `read_file()` / `list_files()` tools |
+| Context management | Context lives in REPL variables — never in the prompt |
+| Halting | `SUBMIT(result=...)` when the agent decides it's done |
+| Budget control | `max_iterations` + `max_llm_calls` |
 
-### Phase 0 — Discovery & Scoping
-1. Review `dspy.rlm` API surface and any recursion helpers.
-2. Identify how `dspy.rlm` expects sub-agent invocation, budgets, and stop conditions.
-3. Map Deep Agents features to `dspy.rlm` capabilities and gaps.
+## Quick Start
 
-See [docs/phase-0-discovery.md](docs/phase-0-discovery.md) for the detailed Phase 0 checklist and expected outputs.
+```python
+import dspy
+from dspy_deepagents import build_deep_agent
 
-### Phase 1 — Core Recursive Agent Skeleton (RLM-backed)
-1. Build a `RecursiveAgent` DSPy `Module` that **uses `dspy.rlm` for recursion control** (depth, budget, halting).
-2. Define structured I/O via `Signature`s:
-   - `PlanSignature` (decompose into child tasks)
-   - `ExecuteSignature` (solve leaf tasks / tool calls)
-   - `SynthesizeSignature` (aggregate child outputs)
-3. Enforce explicit stop criteria (depth cap, budget, confidence threshold).
+dspy.configure(lm=dspy.LM("openai/gpt-4o"))
 
+agent = build_deep_agent(
+    sub_lm=dspy.LM("openai/gpt-4o-mini"),  # cheaper model for sub-queries
+)
 
-Phase 1 scaffolding lives in [`dspy_deepagents/recursive_agent.py`](dspy_deepagents/recursive_agent.py) with a short status note in [docs/phase-1-skeleton.md](docs/phase-1-skeleton.md).
+result = agent(task="Research the four pillars of deep agents and write a report")
+print(result.result)
+```
 
-### Phase 2 — Agent Roles as DSPy Modules
-Implement the Deep Agents role topology as composable DSPy modules:
-- **PlannerAgent**: creates child tasks.
-- **ExecutorAgent**: handles atomic tasks and tool calls.
-- **ReviewerAgent**: validates outputs and confidence.
-- **SynthesizerAgent**: merges child results.
+## Architecture
 
-Each role should be usable stand-alone or via `RecursiveAgent`, and defaults to
-`dspy.RLM` predictors unless you provide a custom predictor.
+```
+DeepAgent = RLM(DeepAgentSignature, tools=[...], max_iterations=50)
+│
+│  REPL sandbox (Deno/Pyodide WASM)
+│  ├── task, context     → Python str variables
+│  │
+│  ├── write_todos()     → planning tool
+│  ├── read_todos()      → planning tool
+│  ├── write_file()      → workspace tool
+│  ├── read_file()       → workspace tool
+│  ├── list_files()      → workspace tool
+│  ├── delegate()        → spawns child RLM (isolated sandbox)
+│  │
+│  ├── llm_query()       → built-in: semantic reasoning
+│  ├── llm_query_batched() → built-in: parallel queries
+│  └── SUBMIT(result=...)  → built-in: halt and return
+│
+└── sub_lm → cheaper model for llm_query() calls
+```
 
-### Phase 3 — Memory & Trace
-1. Define a lightweight memory structure (per-node scratch + persistent history).
-2. Thread memory through `dspy.rlm` recursion context.
-3. Persist a structured trace (depth, node id, task, outputs, confidence).
+## API
 
-### Phase 4 — Tooling (Leaf-Only Actions)
-1. Build a tool registry and selector signature.
-2. Constrain tool calls to **leaf recursion nodes**.
-3. Record tool use in trace for explainability.
+### `build_deep_agent(...) -> RLM`
 
-### Phase 5 — Reflection & Refinement
-1. Add a reviewer/reflection loop for low-confidence outputs.
-2. Allow re-entry into `dspy.rlm` recursion if critique indicates missing coverage.
+Factory function that wires the four pillar tools into a single RLM agent.
 
-### Phase 6 — Evaluation Harness
-1. Define a small suite of hierarchical tasks (multi-step + tool-optional).
-2. Compare flat DSPy baseline vs. recursive agent.
-3. Add metrics: depth usage, correctness, cost, tool call rate.
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `signature` | `type[Signature]` | `DeepAgentSignature` | Agent's system prompt / IO contract |
+| `workspace` | `Workspace` | auto temp dir | Shared filesystem for artifacts |
+| `max_depth` | `int` | `3` | Maximum sub-agent nesting depth |
+| `current_depth` | `int` | `0` | Current nesting level |
+| `max_iterations` | `int` | `50` | REPL iteration budget |
+| `max_llm_calls` | `int` | `80` | Sub-LLM call budget |
+| `sub_lm` | `dspy.LM` | `None` | Cheaper model for `llm_query()` |
+| `extra_tools` | `list[Callable]` | `None` | Domain-specific tool functions |
+| `include_review` | `bool` | `False` | Add `review_draft` cross-agent review tool |
 
-## Design Principles
-- **RLM as the backbone**: recursion must be driven by `dspy.rlm` rather than bespoke recursion.
-- **Composable DSPy modules**: keep roles modular and testable.
-- **Strict I/O schemas**: reduce prompt drift in recursion.
-- **Traceability**: each node should be inspectable and reproducible.
+### Signatures
 
-## Next Steps
-1. Inspect `dspy.rlm` API and draft the minimal `RecursiveAgent` skeleton.
-2. Stub role modules and signatures.
-3. Create a first evaluation example (manual test) to validate recursion flow.
+- **`DeepAgentSignature`** — General-purpose agent with detailed workflow instructions
+- **`ResearchAgentSignature`** — Research-focused sub-agent
+- **`ReviewSignature`** — Critical reviewer for cross-agent review
 
-## Implementation Status
-- Phase 0/1: documented and scaffolded in `docs/phase-0-discovery.md` and `docs/phase-1-skeleton.md`.
-- Phase 2: roles implemented in `dspy_deepagents/roles.py` with summary in `docs/phase-2-roles.md`.
-- Phase 3: memory/trace implemented in `dspy_deepagents/memory.py` and `dspy_deepagents/trace.py`.
-- Phase 4: tool routing implemented in `dspy_deepagents/tools.py` and `RecursiveAgent` leaf execution.
-- Phase 5: reviewer/reflection loop added to `RecursiveAgent` with `ReviewerAgent` and `ReviewSignature`.
-- Phase 6: evaluation harness and examples added under `examples/`.
+### Tool Classes
+
+- **`TodoStore`** — Planning tool (`write_todos` / `read_todos`)
+- **`Workspace`** — Shared filesystem (`write_file` / `read_file` / `list_files`)
+- **`SubAgentDelegator`** — Sub-agent spawning with context isolation
+- **`make_review_tool()`** — Factory for independent reviewer tool
 
 ## Examples
-- `examples/basic_recursive_agent.py`: basic recursion flow with memory + trace output.
-- `examples/tool_recursive_agent.py`: leaf-only tool routing and trace capture.
-- `examples/review_recursive_agent.py`: reviewer/reflection loop.
-- `examples/eval_harness.py`: simple evaluation harness for multiple tasks.
-- `examples/deep_research_agent.py`: deep research workflow with Wikipedia-backed notes.
+
+- `examples/basic_recursive_agent.py` — Simplest deep agent usage
+- `examples/tool_recursive_agent.py` — Custom domain tools
+- `examples/review_recursive_agent.py` — Cross-agent review
+- `examples/deep_research_agent.py` — Research workflow with Wikipedia
+- `examples/eval_harness.py` — Multi-task evaluation
+
+## Design Principles
+
+- **RLM as the backbone**: the agent loop is RLM's REPL loop, not custom Python recursion
+- **Context isolation**: each sub-agent gets a fresh sandbox; only `SUBMIT()` return values cross boundaries
+- **Workspace as shared memory**: files persist across agents; REPL state does not
+- **DSPy-native optimization**: Signature docstrings are optimizable via `MIPROv2`
+- **Minimal code**: ~150 lines for the complete agent (vs. ~330 in the previous architecture)
