@@ -1,11 +1,23 @@
+"""Evaluation harness for comparing deep agent against baselines.
+
+Runs a set of tasks through the deep agent and prints results with
+trajectory statistics. Can be extended with ground-truth scoring
+and DSPy optimizer integration.
+"""
+
 import os
 
 import dspy
 
-from dspy_deepagents import RecursionConfig, RecursiveAgent, Tool, ToolRegistry
+from dspy_deepagents import build_deep_agent
 
 
-def echo_tool(text: str) -> str:
+def echo(text: str) -> str:
+    """Echo the input text back unchanged.
+
+    Args:
+        text: Text to echo.
+    """
     return text
 
 
@@ -15,15 +27,12 @@ def main() -> None:
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is required for this example")
 
-    dspy.settings.configure(lm=dspy.OpenAI(model=model, api_key=api_key))
+    dspy.configure(lm=dspy.LM(f"openai/{model}", api_key=api_key))
 
-    tools = ToolRegistry(
-        tools=[Tool(name="echo", description="Echo input text", func=echo_tool)]
-    )
-
-    agent = RecursiveAgent(
-        config=RecursionConfig(max_depth=2, budget=4, review_threshold=0.8),
-        tools=tools,
+    agent = build_deep_agent(
+        max_iterations=20,
+        max_llm_calls=30,
+        extra_tools=[echo],
     )
 
     tasks = [
@@ -33,13 +42,11 @@ def main() -> None:
     ]
 
     for task in tasks:
-        result = agent(task=task, context="")
+        result = agent(task=task)
         print("=" * 80)
         print("Task:", task)
         print("Result:\n", result.result)
-        print("Confidence:", result.confidence)
-        print("Trace events:", len(result.trace))
-        print("Memory:\n", result.memory)
+        print("Trajectory steps:", len(result.trajectory))
 
 
 if __name__ == "__main__":
