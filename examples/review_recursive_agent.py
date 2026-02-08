@@ -1,8 +1,16 @@
+"""Deep agent example with cross-agent review.
+
+Demonstrates the ``include_review=True`` option which adds a
+``review_draft`` tool.  The agent can call this tool to have an
+independent reviewer (separate RLM with isolated context) evaluate
+its draft before submitting.
+"""
+
 import os
 
 import dspy
 
-from dspy_deepagents import RecursionConfig, RecursiveAgent
+from dspy_deepagents import build_deep_agent
 
 
 def main() -> None:
@@ -11,12 +19,11 @@ def main() -> None:
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is required for this example")
 
-    dspy.settings.configure(lm=dspy.OpenAI(model=model, api_key=api_key))
+    dspy.configure(lm=dspy.LM(f"openai/{model}", api_key=api_key))
 
-    agent = RecursiveAgent(
-        config=RecursionConfig(
-            max_depth=1, budget=2, review_threshold=0.9, reflection_rounds=2
-        )
+    agent = build_deep_agent(
+        max_iterations=25,
+        include_review=True,
     )
 
     result = agent(
@@ -27,8 +34,7 @@ def main() -> None:
     )
 
     print("Result:\n", result.result)
-    print("Confidence:", result.confidence)
-    print("Trace events:", len(result.trace))
+    print("Trajectory steps:", len(result.trajectory))
 
 
 if __name__ == "__main__":
