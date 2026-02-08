@@ -72,6 +72,10 @@ def build_deep_agent(
         max_depth=max_depth,
         current_depth=current_depth,
         agent_factory=build_deep_agent,
+        extra_tools=extra_tools,
+        signature=sig,
+        sub_lm=sub_lm,
+        include_review=include_review,
     )
 
     # Collect all tool functions

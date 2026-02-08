@@ -131,3 +131,72 @@ class TestSubAgentDelegator:
             # "not configured" instead of the depth error.
             result = delegator.delegate("do something")
             assert "max sub-agent depth" not in result
+
+    def test_inherited_params_forwarded_to_child(self) -> None:
+        """Verify extra_tools, signature, sub_lm, include_review reach children."""
+        captured: dict[str, object] = {}
+
+        def fake_factory(**kwargs: object) -> None:
+            captured.update(kwargs)
+            # Raise to stop execution before RLM forward() is called
+            raise RuntimeError("stop")
+
+        def my_tool(x: str) -> str:
+            return x
+
+        sentinel_sig = type("FakeSig", (), {})
+        sentinel_lm = object()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Workspace(Path(tmp))
+            delegator = SubAgentDelegator(
+                workspace=ws,
+                max_depth=3,
+                current_depth=0,
+                agent_factory=fake_factory,
+                extra_tools=[my_tool],
+                signature=sentinel_sig,
+                sub_lm=sentinel_lm,
+                include_review=True,
+            )
+
+            try:
+                delegator.delegate("child task", context="ctx")
+            except RuntimeError:
+                pass
+
+            # Factory should have been called with inherited params
+            assert captured["signature"] is sentinel_sig
+            assert captured["sub_lm"] is sentinel_lm
+            assert captured["include_review"] is True
+            assert captured["extra_tools"] == [my_tool]
+            # Depth should be incremented
+            assert captured["current_depth"] == 1
+            assert captured["workspace"] is ws
+
+    def test_inherited_params_default_to_none(self) -> None:
+        """Without inherited params, children get None/False defaults."""
+        captured: dict[str, object] = {}
+
+        def fake_factory(**kwargs: object) -> None:
+            captured.update(kwargs)
+            raise RuntimeError("stop")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Workspace(Path(tmp))
+            delegator = SubAgentDelegator(
+                workspace=ws,
+                max_depth=3,
+                current_depth=0,
+                agent_factory=fake_factory,
+            )
+
+            try:
+                delegator.delegate("child task")
+            except RuntimeError:
+                pass
+
+            assert captured["extra_tools"] is None
+            assert captured["signature"] is None
+            assert captured["sub_lm"] is None
+            assert captured["include_review"] is False

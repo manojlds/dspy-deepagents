@@ -94,6 +94,10 @@ class SubAgentDelegator:
 
     Each child gets the same shared workspace but a fresh REPL sandbox,
     ensuring context isolation while allowing file-based communication.
+    The parent's ``extra_tools``, ``signature``, ``sub_lm``, and
+    ``include_review`` settings are forwarded to children so that
+    domain-specific tools (e.g. ``wikipedia_summary``) remain available
+    throughout the delegation tree.
     """
 
     def __init__(
@@ -102,12 +106,21 @@ class SubAgentDelegator:
         max_depth: int = 3,
         current_depth: int = 0,
         agent_factory: Callable[..., Any] | None = None,
+        extra_tools: list[Callable[..., object]] | None = None,
+        signature: type | None = None,
+        sub_lm: Any | None = None,
+        include_review: bool = False,
     ) -> None:
         self.workspace = workspace
         self.max_depth = max_depth
         self.current_depth = current_depth
         # Circular import avoidance: factory is injected by build_deep_agent
         self._agent_factory = agent_factory
+        # Inherited settings forwarded to child agents
+        self._extra_tools = extra_tools
+        self._signature = signature
+        self._sub_lm = sub_lm
+        self._include_review = include_review
 
     def delegate(self, task: str, context: str = "") -> str:
         """Spawn an isolated sub-agent for a focused task.
@@ -129,11 +142,15 @@ class SubAgentDelegator:
             return "Error: sub-agent delegation is not configured."
 
         child = self._agent_factory(
+            signature=self._signature,
             workspace=self.workspace,
             max_depth=self.max_depth,
             current_depth=self.current_depth + 1,
             max_iterations=30,
             max_llm_calls=40,
+            sub_lm=self._sub_lm,
+            extra_tools=self._extra_tools,
+            include_review=self._include_review,
         )
         result = child(task=task, context=context)
         return result.result
