@@ -1,35 +1,34 @@
-"""DSPy-native Deep Agents scaffolding."""
+"""DSPy-native Deep Agents with RLM-backed orchestration.
 
-from dspy_deepagents.memory import RecursiveMemory
-from dspy_deepagents.recursive_agent import RecursionConfig, RecursiveAgent
-from dspy_deepagents.roles import (
-    ExecuteSignature,
-    ExecutorAgent,
-    PlannerAgent,
-    PlanSignature,
-    ReviewerAgent,
+The core API is ``build_deep_agent()``, which returns an RLM module
+wired with tools implementing the four Deep Agents pillars:
+
+1. **Detailed system prompts** -- Signature docstrings
+2. **Planning tool** -- ``write_todos`` / ``read_todos``
+3. **Sub-agent delegation** -- ``delegate()`` with context isolation
+4. **Filesystem workspace** -- ``write_file`` / ``read_file`` / ``list_files``
+"""
+
+from dspy_deepagents.agent import build_deep_agent
+from dspy_deepagents.signature import (
+    DeepAgentSignature,
+    ResearchAgentSignature,
     ReviewSignature,
-    SynthesizerAgent,
-    SynthesizeSignature,
-    ToolSelectorAgent,
-    ToolSelectSignature,
 )
-from dspy_deepagents.tools import Tool, ToolRegistry
+from dspy_deepagents.tools import (
+    SubAgentDelegator,
+    TodoStore,
+    Workspace,
+    make_review_tool,
+)
 
 __all__ = [
-    "PlanSignature",
-    "ExecuteSignature",
+    "build_deep_agent",
+    "DeepAgentSignature",
+    "ResearchAgentSignature",
     "ReviewSignature",
-    "SynthesizeSignature",
-    "ToolSelectSignature",
-    "RecursionConfig",
-    "RecursiveAgent",
-    "RecursiveMemory",
-    "PlannerAgent",
-    "ExecutorAgent",
-    "ReviewerAgent",
-    "SynthesizerAgent",
-    "ToolSelectorAgent",
-    "Tool",
-    "ToolRegistry",
+    "TodoStore",
+    "Workspace",
+    "SubAgentDelegator",
+    "make_review_tool",
 ]

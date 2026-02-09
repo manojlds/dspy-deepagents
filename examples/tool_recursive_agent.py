@@ -1,11 +1,23 @@
+"""Deep agent example with custom domain tools.
+
+Demonstrates registering extra tool functions via ``extra_tools``.
+The agent's RLM REPL can call these tools directly alongside the
+built-in planning and workspace tools.
+"""
+
 import os
 
 import dspy
 
-from dspy_deepagents import RecursionConfig, RecursiveAgent, Tool, ToolRegistry
+from dspy_deepagents import build_deep_agent
 
 
-def length_tool(text: str) -> str:
+def word_count(text: str) -> str:
+    """Count the number of words in the given text.
+
+    Args:
+        text: The text to count words in.
+    """
     return str(len(text.split()))
 
 
@@ -15,30 +27,19 @@ def main() -> None:
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is required for this example")
 
-    dspy.settings.configure(lm=dspy.OpenAI(model=model, api_key=api_key))
+    dspy.configure(lm=dspy.LM(f"openai/{model}", api_key=api_key))
 
-    tools = ToolRegistry(
-        tools=[
-            Tool(
-                name="word_count",
-                description="Count words in text",
-                func=length_tool,
-            )
-        ]
-    )
-
-    agent = RecursiveAgent(
-        config=RecursionConfig(max_depth=1, budget=2),
-        tools=tools,
+    agent = build_deep_agent(
+        max_iterations=15,
+        extra_tools=[word_count],
     )
 
     result = agent(
         task="Use the word_count tool to count words in: 'Deep agents use recursion'.",
-        context="",
     )
 
     print("Result:\n", result.result)
-    print("Trace:\n", result.trace)
+    print("Trajectory steps:", len(result.trajectory))
 
 
 if __name__ == "__main__":
