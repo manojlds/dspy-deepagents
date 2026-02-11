@@ -5,6 +5,7 @@ from __future__ import annotations
 import dspy
 
 from dspy_deepagents.signature import (
+    CodingAgentSignature,
     DeepAgentSignature,
     ResearchAgentSignature,
     ReviewSignature,
@@ -29,9 +30,11 @@ def test_deep_agent_signature_has_result_output() -> None:
 def test_deep_agent_signature_has_detailed_docstring() -> None:
     doc = DeepAgentSignature.__doc__
     assert doc is not None
-    # Must contain workflow instructions (Pillar 1)
     assert "WORKFLOW" in doc
-    assert "TOOL USAGE" in doc
+    assert "FILESYSTEM TOOLS" in doc
+    assert "list_dir" in doc
+    assert "grep" in doc
+    assert "read_file_lines" in doc
     assert "write_todos" in doc
     assert "delegate" in doc
     assert "SUBMIT" in doc
@@ -53,3 +56,7 @@ def test_signatures_are_dspy_signatures() -> None:
     assert issubclass(DeepAgentSignature, dspy.Signature)
     assert issubclass(ReviewSignature, dspy.Signature)
     assert issubclass(ResearchAgentSignature, dspy.Signature)
+
+
+def test_coding_agent_signature_is_alias() -> None:
+    assert CodingAgentSignature is DeepAgentSignature

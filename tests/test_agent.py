@@ -31,11 +31,10 @@ def test_build_deep_agent_custom_signature() -> None:
     assert agent.signature is ResearchAgentSignature
 
 
-def test_build_deep_agent_creates_workspace() -> None:
+def test_build_deep_agent_has_all_pillar_tools() -> None:
     agent = build_deep_agent()
-    # The agent should have tools registered (at least 6 core tools)
     assert agent.tools is not None
-    assert len(agent.tools) >= 6
+    assert len(agent.tools) >= 12
 
 
 def test_build_deep_agent_shared_workspace() -> None:
@@ -43,7 +42,14 @@ def test_build_deep_agent_shared_workspace() -> None:
         ws = Workspace(Path(tmp))
         agent = build_deep_agent(workspace=ws)
         assert agent.tools is not None
-        assert len(agent.tools) >= 6
+        assert len(agent.tools) >= 12
+
+
+def test_build_deep_agent_with_root() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        agent = build_deep_agent(root=tmp)
+        assert agent.tools is not None
+        assert len(agent.tools) >= 12
 
 
 def test_build_deep_agent_with_extra_tools() -> None:
@@ -52,16 +58,14 @@ def test_build_deep_agent_with_extra_tools() -> None:
         return str(len(text.split()))
 
     agent = build_deep_agent(extra_tools=[word_count])
-    # 6 core tools + 1 extra
     assert agent.tools is not None
-    assert len(agent.tools) >= 7
+    assert len(agent.tools) >= 13
 
 
 def test_build_deep_agent_with_review_tool() -> None:
     agent = build_deep_agent(include_review=True)
-    # 6 core tools + 1 review tool
     assert agent.tools is not None
-    assert len(agent.tools) >= 7
+    assert len(agent.tools) >= 13
 
 
 def test_build_deep_agent_respects_iterations() -> None:

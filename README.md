@@ -16,7 +16,7 @@ itself is an RLM.  All four Deep Agents pillars map directly to RLM primitives:
 | System prompt | RLM Signature docstring + action instructions |
 | Planning (todo list) | `write_todos()` / `read_todos()` tool functions |
 | Sub-agent delegation | `delegate()` tool spawning child RLM (fresh sandbox = isolation) |
-| Filesystem workspace | `write_file()` / `read_file()` / `list_files()` tools |
+| Filesystem | `list_dir()` / `grep()` / `glob_search()` / `read_file_lines()` / `stat()` / `replace_lines()` + workspace `write_file()` / `read_file()` |
 | Context management | Context lives in REPL variables — never in the prompt |
 | Halting | `SUBMIT(result=...)` when the agent decides it's done |
 | Budget control | `max_iterations` + `max_llm_calls` |
@@ -37,24 +37,51 @@ result = agent(task="Research the four pillars of deep agents and write a report
 print(result.result)
 ```
 
+### Exploring a codebase
+
+Every deep agent gets filesystem tools by default.  Point `root` at a
+codebase to let the agent explore it:
+
+```python
+agent = build_deep_agent(
+    root="/path/to/repo",
+    max_iterations=40,
+    max_llm_calls=60,
+    max_depth=2,
+)
+
+result = agent(
+    task="Analyze the architecture and design patterns of this codebase.",
+)
+print(result.result)
+```
+
 ## Architecture
 
 ```
 DeepAgent = RLM(DeepAgentSignature, tools=[...], max_iterations=50)
 │
 │  REPL sandbox (Deno/Pyodide WASM)
-│  ├── task, context     → Python str variables
+│  ├── task, context        → Python str variables
 │  │
-│  ├── write_todos()     → planning tool
-│  ├── read_todos()      → planning tool
-│  ├── write_file()      → workspace tool
-│  ├── read_file()       → workspace tool
-│  ├── list_files()      → workspace tool
-│  ├── delegate()        → spawns child RLM (isolated sandbox)
+│  ├── Filesystem tools (rooted at root or workspace):
+│  │   ├── list_dir()       → paginated directory listing
+│  │   ├── glob_search()    → file pattern matching
+│  │   ├── grep()           → bounded text search with context
+│  │   ├── read_file_lines()→ line-range file reading (numbered)
+│  │   ├── stat()           → file/dir metadata (size, lines)
+│  │   └── replace_lines()  → surgical line-level edits
 │  │
-│  ├── llm_query()       → built-in: semantic reasoning
-│  ├── llm_query_batched() → built-in: parallel queries
-│  └── SUBMIT(result=...)  → built-in: halt and return
+│  ├── write_todos()        → planning tool
+│  ├── read_todos()         → planning tool
+│  ├── write_file()         → workspace tool
+│  ├── read_file()          → workspace tool
+│  ├── list_files()         → workspace tool
+│  ├── delegate()           → spawns child RLM (isolated sandbox)
+│  │
+│  ├── llm_query()          → built-in: semantic reasoning
+│  ├── llm_query_batched()  → built-in: parallel queries
+│  └── SUBMIT(result=...)   → built-in: halt and return
 │
 └── sub_lm → cheaper model for llm_query() calls
 ```
@@ -69,6 +96,7 @@ Factory function that wires the four pillar tools into a single RLM agent.
 |-----------|------|---------|-------------|
 | `signature` | `type[Signature]` | `DeepAgentSignature` | Agent's system prompt / IO contract |
 | `workspace` | `Workspace` | auto temp dir | Shared filesystem for artifacts |
+| `root` | `str \| Path` | workspace root | Root directory for filesystem tools |
 | `max_depth` | `int` | `3` | Maximum sub-agent nesting depth |
 | `current_depth` | `int` | `0` | Current nesting level |
 | `max_iterations` | `int` | `50` | REPL iteration budget |
@@ -79,14 +107,15 @@ Factory function that wires the four pillar tools into a single RLM agent.
 
 ### Signatures
 
-- **`DeepAgentSignature`** — General-purpose agent with detailed workflow instructions
+- **`DeepAgentSignature`** — General-purpose agent with filesystem, planning, delegation, and workspace tools
 - **`ResearchAgentSignature`** — Research-focused sub-agent
 - **`ReviewSignature`** — Critical reviewer for cross-agent review
 
 ### Tool Classes
 
+- **`FilesystemTools`** — Paginated filesystem middleware (`list_dir` / `glob_search` / `grep` / `read_file_lines` / `stat` / `replace_lines`)
 - **`TodoStore`** — Planning tool (`write_todos` / `read_todos`)
-- **`Workspace`** — Shared filesystem (`write_file` / `read_file` / `list_files`)
+- **`Workspace`** — Shared filesystem for artifacts (`write_file` / `read_file` / `list_files`)
 - **`SubAgentDelegator`** — Sub-agent spawning with context isolation
 - **`make_review_tool()`** — Factory for independent reviewer tool
 
@@ -96,12 +125,13 @@ Factory function that wires the four pillar tools into a single RLM agent.
 - `examples/tool_recursive_agent.py` — Custom domain tools
 - `examples/review_recursive_agent.py` — Cross-agent review
 - `examples/deep_research_agent.py` — Research workflow with Wikipedia
+- `examples/deep_coding_agent.py` — Codebase exploration and architecture analysis
 - `examples/eval_harness.py` — Multi-task evaluation
 
 ## Design Principles
 
 - **RLM as the backbone**: the agent loop is RLM's REPL loop, not custom Python recursion
+- **Filesystem as a core pillar**: every agent gets paginated, bounded file tools by default
 - **Context isolation**: each sub-agent gets a fresh sandbox; only `SUBMIT()` return values cross boundaries
 - **Workspace as shared memory**: files persist across agents; REPL state does not
 - **DSPy-native optimization**: Signature docstrings are optimizable via `MIPROv2`
-- **Minimal code**: ~150 lines for the complete agent (vs. ~330 in the previous architecture)
